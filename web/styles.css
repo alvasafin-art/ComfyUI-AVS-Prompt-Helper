@@ -1,0 +1,53 @@
+.avs-root,.avs-settings{--avs-bg:#181818;--avs-field:#080808;--avs-text:#e5e5e5;--avs-muted:#909090;--avs-accent:#f25623;box-sizing:border-box;color:var(--avs-text);background:var(--avs-bg);font:13px/1.5 Inter,Segoe UI,sans-serif;color-scheme:dark;accent-color:var(--avs-accent)}
+.avs-root *,.avs-settings *{box-sizing:border-box}
+.avs-root{height:100%;min-width:0;display:flex;flex-direction:column;gap:14px;padding:12px 10px;overflow:auto;border:0;border-radius:0}
+.avs-top{display:flex;justify-content:flex-end;flex-shrink:0;height:36px}
+.avs-root button,.avs-settings button,.avs-root select,.avs-settings input,.avs-settings select{border:0;background:var(--avs-field);color:var(--avs-text);border-radius:5px;font:inherit;padding:9px 11px;min-width:0;cursor:pointer}
+.avs-root button:hover,.avs-settings button:hover{background:#373737;color:#fff}
+.avs-root :focus-visible,.avs-settings :focus-visible{outline:2px solid var(--avs-accent);outline-offset:2px}
+.avs-root button:disabled,.avs-settings button:disabled{opacity:.45;cursor:wait}
+.avs-root .avs-primary,.avs-settings .avs-primary{background:var(--avs-accent);color:#101010;font-weight:650}
+.avs-root .avs-primary:hover,.avs-settings .avs-primary:hover{background:#ff6a37;color:#080808}
+.avs-top button{display:flex;align-items:center;justify-content:center;background:transparent;padding:0 7px;color:#a0a0a0;font-size:22.67px;line-height:1}
+.avs-prompt{flex:1;min-height:135px;display:flex;flex-direction:column}
+.avs-editor-host{position:relative;flex:1;min-height:135px;display:flex;flex-direction:column}
+.avs-editor,.avs-settings textarea{border:0;background:var(--avs-field);border-radius:6px;padding:14px;color:var(--avs-text);font:13px/1.65 Inter,Segoe UI,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;min-width:0;width:100%}
+.avs-editor{flex:1;min-height:135px}
+.avs-editor:empty:before{content:attr(data-placeholder);color:#686868;pointer-events:none}
+.avs-chip{background:#242424;border-radius:3px;padding:1px 4px;white-space:nowrap}
+.avs-missing{outline:1px dashed #f25623;color:#ff936e!important}
+.avs-mentions{position:absolute;z-index:20;left:0;right:0;bottom:0;max-height:160px;overflow:auto;border-radius:5px;background:#111;box-shadow:0 8px 24px #0009}
+.avs-mentions[hidden]{display:none}.avs-mentions button{display:block;width:100%;text-align:left;border-radius:0}.avs-mentions [aria-selected=true]{background:#34302d}
+.avs-system{flex-shrink:0}.avs-preset-actions{display:flex;gap:8px}.avs-preset-actions select{flex:1;width:0;color:#aaa}.avs-preset-actions button{min-width:36px}
+.avs-label{display:block;color:var(--avs-muted);font-size:11px;font-weight:500;margin-bottom:8px}
+.avs-images{max-height:370px;overflow:auto;flex-shrink:0}
+.avs-image-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.avs-image-card{position:relative;display:flex;flex-direction:column;min-width:0;background:var(--avs-field);border-radius:6px;overflow:hidden}
+.avs-image-card img{width:100%;height:145px;object-fit:contain;background:var(--avs-field)}
+.avs-image-card b{padding:8px 10px;font-size:11px;font-weight:500;color:var(--image-color)}
+.avs-graph-image{height:145px;display:grid;place-content:center;color:#909090;transform:translateY(16px)}
+.avs-graph-image svg{display:block;width:38px;height:16px}
+.avs-image-controls{position:absolute;top:6px;right:6px;display:flex;gap:3px}.avs-image-controls button{padding:2px 7px;background:#242424dc;color:#bcbcbc}
+.avs-root .avs-add-image{min-height:177px;background:var(--avs-field);color:#b5b5b5;font-size:36px;font-weight:200}
+.avs-root .avs-add-image:hover{background:#111;color:#d0d0d0}
+.avs-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;margin-top:auto;padding-top:3px}
+.avs-status{flex:1;min-width:0;color:var(--avs-muted);font-size:10px;line-height:1.6;overflow-wrap:anywhere}.avs-footer button{flex-shrink:0;font-size:12px}.avs-error{color:#ff936e}
+.avs-footer .avs-primary,.avs-footer .avs-primary:hover{color:#fff;display:inline-flex;align-items:center;justify-content:center;text-align:center;min-width:104px}
+.avs-settings{position:fixed;width:min(490px,94vw);max-height:90vh;overflow:auto;border:0;border-radius:10px;padding:24px;box-shadow:0 20px 80px #0009}
+.avs-settings::backdrop{background:#0009}.avs-settings h2{font-size:16px;font-weight:500;margin:0 0 16px}
+.avs-settings fieldset{border:0;padding:0;margin:0 0 22px;min-width:0}
+.avs-settings legend{color:var(--avs-accent);font-size:11px;font-weight:600;letter-spacing:.06em;padding:0;margin-bottom:4px}
+.avs-capability-note{font-size:11px;color:#858585;line-height:1.5;font-weight:400}
+.avs-settings label{display:grid;gap:7px;margin:12px 0;color:#a2a2a2;font-size:12px}.avs-settings label[hidden]{display:none}
+.avs-settings input,.avs-settings select{width:100%;cursor:auto;color:#dfdfdf;font-size:13px;padding:10px 12px}
+.avs-root select,.avs-settings select{appearance:none;-webkit-appearance:none;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23999999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px 12px}
+.avs-dialog-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin-top:18px}
+.avs-dialog-actions button{font-size:12px}.avs-dialog-actions button:first-child:not(:last-child){margin-right:auto;color:#aaa}.avs-dialog-actions .avs-primary{color:#101010!important}
+.avs-dialog-actions .avs-save-settings,.avs-dialog-actions .avs-save-settings:hover{color:#fff!important}
+.avs-library{width:min(360px,94vw)}
+.avs-library-group{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.avs-library-group button{text-align:left;min-height:40px}
+.avs-library-delete{margin-top:24px;display:flex;justify-content:flex-end}
+.avs-library-delete button{color:#ee987c;background:transparent}
+.avs-library-delete button:hover{color:#ffb39b;background:#30211c}
+.avs-settings p:empty{display:none}.avs-preset-dialog{width:min(620px,94vw)}.avs-settings .avs-preset-text{min-height:260px;max-height:55vh;resize:vertical;color:#ddd}

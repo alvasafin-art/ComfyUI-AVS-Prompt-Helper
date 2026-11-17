@@ -1,0 +1,14 @@
+{
+  "prompt": {
+    "1": {
+      "class_type": "AVSPromptHelper",
+      "inputs": {
+        "state": "{\"version\":1,\"document\":[\"Write an image prompt for a quiet lakeside cabin at dawn.\"],\"system_prompt\":\"Return only the final image prompt.\",\"settings\":{\"adapter\":\"openai\",\"model\":\"REPLACE_WITH_YOUR_MODEL_ID\"}}"
+      }
+    },
+    "2": {
+      "class_type": "PreviewAny",
+      "inputs": {"source": ["1", 0]}
+    }
+  }
+}
