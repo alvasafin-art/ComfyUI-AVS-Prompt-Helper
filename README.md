@@ -2,6 +2,11 @@
 
 A ComfyUI custom node that turns instructions and optional images into one `STRING` prompt using external models. Designed for the classic Nodes 1.0 canvas, using ComfyUI's `addDOMWidget` lifecycle. It loads no inference model into VRAM.
 
+<p>
+  <a href="docs/images/prompt-node.png"><img src="docs/images/prompt-node.png" width="56%" alt="AVS Prompt Helper with the Flux 2 Klein 4B EDIT preset and two image references"></a>
+  <a href="docs/images/model-settings.png"><img src="docs/images/model-settings.png" width="37%" alt="AVS Prompt Helper settings with Codex CLI model and reasoning selectors"></a>
+</p>
+
 ## Install
 
 Copy this repository to `ComfyUI/custom_nodes/ComfyUI-AVS-Prompt-Helper` (the folder name is flexible). Install requirements with **ComfyUI's Python**, then restart ComfyUI and refresh the browser:
