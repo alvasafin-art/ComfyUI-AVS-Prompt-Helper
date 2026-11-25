@@ -6,6 +6,7 @@ import { showNodeDialog } from './dialog.js';
 
 const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = new URL('./styles.css', import.meta.url).href; document.head.append(style);
 const TYPE = 'AVSPromptHelper';
+let serverHasImageOutput = false;
 async function request(path, body) {
     const response = await api.fetchApi('/avs-prompt' + path, body === undefined ? {} : body instanceof FormData ? {method:'POST',body} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if (!response.ok) { let error; try { error = (await response.json()).error; } catch {} throw new Error(error || `AVS request failed (${response.status})`); }
@@ -34,6 +35,13 @@ export function syncSockets(node) {
     const count = Math.min(20, Math.max(1, last + 2));
     for (let i = sockets.length - 1; i >= count; i--) node.removeInput(node.inputs.indexOf(sockets[i]));
     for (let i = sockets.length; i < count; i++) node.addInput(`image_${i+1}`, 'IMAGE');
+}
+
+function restoreImageOutput(node) {
+    // Saved workflows can replace the constructor's outputs with their serialized slot array.
+    if (serverHasImageOutput && node.outputs?.length === 1 && node.outputs[0].type === 'STRING') {
+        node.addOutput('image', 'IMAGE');
+    }
 }
 
 function install(node) {
@@ -168,7 +176,13 @@ function install(node) {
         try{const saved=JSON.parse(original?.value||'{}');state={...state,...saved,settings:{...defaults,...saved.settings}};if(state.version!==1)throw new Error('Unsupported workflow version');editor.set(state.document||[state.prompt||'']);drawPresets();drawImages();}catch(e){fail(e);}
     }
     const configure=node.onConfigure;
-    node.onConfigure=function(...args){const result=configure?.apply(this,args);restore();queueMicrotask(()=>{if(!removed)syncSockets(node);});return result;};
+    node.onConfigure=function(...args){
+        const result=configure?.apply(this,args);
+        restoreImageOutput(node);
+        restore();
+        queueMicrotask(()=>{if(!removed)syncSockets(node);});
+        return result;
+    };
     const connections=node.onConnectionsChange;
     node.onConnectionsChange=function(...args){const result=connections?.apply(this,args);if(!syncing){syncing=true;queueMicrotask(()=>{if(!removed){syncSockets(node);drawImages();}syncing=false;});}return result;};
     const resize=node.onResize;
@@ -185,4 +199,10 @@ function install(node) {
     syncSockets(node);restore();node.setSize([440,680]);
     request('/presets').then(data=>{if(!removed){library=data.presets;drawPresets();}}).catch(fail);
 }
-app.registerExtension({name:'AVS.PromptHelper',nodeCreated(node){if(node.comfyClass===TYPE)install(node);}});
+app.registerExtension({
+    name:'AVS.PromptHelper',
+    beforeRegisterNodeDef(nodeType, definition){
+        if (definition.name===TYPE) serverHasImageOutput = definition.output?.[1] === 'IMAGE';
+    },
+    nodeCreated(node){if(node.comfyClass===TYPE)install(node);}
+});
