@@ -7,10 +7,12 @@ from .storage import presets, asset_path
 from .images import decode, encode, MAX_BYTES
 from .request import settings_for
 from .adapters import cli_capabilities
+from .image_access import register_prompt_access, rejection
 
 
 def register(server):
     routes = server.routes
+    register_prompt_access(server)
 
     def user(request):
         origin = request.headers.get("Origin")
@@ -103,6 +105,8 @@ def register(server):
         from .image_cli import discover
 
         async def action():
+            if reason := rejection(request):
+                return web.json_response({"error": reason}, status=403)
             try:
                 return web.json_response(await asyncio.to_thread(discover))
             except (OSError, asyncio.TimeoutError):
@@ -111,10 +115,11 @@ def register(server):
 
     @routes.post("/avs-prompt/image-cli/cancel/{identifier}")
     async def cancel_image_cli(request):
-        from .image_cli import cancel, require_enabled
+        from .image_cli import cancel
 
         async def action():
-            require_enabled()
+            if reason := rejection(request):
+                return web.json_response({"error": reason}, status=403)
             cancel(request.match_info["identifier"])
             return web.Response(status=204)
         return await guarded(request, action)

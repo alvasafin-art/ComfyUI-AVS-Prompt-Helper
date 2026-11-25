@@ -9,7 +9,7 @@ A ComfyUI custom node that turns instructions and optional images into a `STRING
 
 ## Install
 
-Install [AVS Prompt Helper v0.4.1](https://github.com/alvasafin-art/ComfyUI-AVS-Prompt-Helper/releases/tag/v0.4.1) or later for Codex CLI image output and automatic restoration of the image port in older saved workflows. Restart the ComfyUI backend after updating the node, then reload the graph.
+Install [AVS Prompt Helper v0.4.2](https://github.com/alvasafin-art/ComfyUI-AVS-Prompt-Helper/releases/tag/v0.4.2) or later for Codex CLI image output and automatic restoration of the image port in older saved workflows. Restart the ComfyUI backend after updating the node, then reload the graph.
 
 Copy this repository to `ComfyUI/custom_nodes/ComfyUI-AVS-Prompt-Helper` (the folder name is flexible). Install requirements with **ComfyUI's Python**, then restart ComfyUI and refresh the browser:
 
@@ -40,11 +40,13 @@ Keys and executable paths are server-local; they are never written to workflows/
 ### Codex CLI image output
 
 1. On the ComfyUI computer, install a Codex CLI that lists `image_generation` in `codex features list` and run `codex login` as the account that starts ComfyUI. Use the same `CODEX_HOME` for sign-in and for ComfyUI when you override it.
-2. Set `AVS_ENABLE_CODEX_IMAGE=1` in the ComfyUI launcher environment and restart the server. In a managed launcher such as ComfyUI Desktop, create an empty file named `enable-codex-image` in the AVS data directory (usually `ComfyUI/user/avs_prompt_helper`). An explicit environment value takes precedence over the file. Give only trusted users and clients access to this ComfyUI instance because image requests use the server's Codex account.
+2. Connect ComfyUI or Composa directly from the same computer. Local clients can use image mode when Codex is signed in. For a client on another computer, add its IP address or trusted CIDR to `trusted-codex-image-clients.txt` in the AVS server data directory (usually `ComfyUI/user/avs_prompt_helper`), one entry per line. Keep access to ComfyUI restricted to trusted clients because its CLI requests use the server account.
 3. In AVS Prompt Helper settings, choose **Codex CLI** and **Generation → Output → Text and image**. Test the connection and select a server language model. The language model calls Codex's built-in image tool. Codex chooses the backing image model.
 4. Enter a prompt such as “A cobalt-blue ceramic cup on a pale gray background” and connect the second output, **image**, to **Preview Image**. You can also connect **prompt**, the first output, to any STRING consumer. Queue the graph to get a square image and a brief text response.
 
 Saved workflows without an output setting default to **Text only** and keep their first output at index 0. In text mode, leave the image port unconnected. Image output is a single RGB tensor shaped `[1,H,W,3]`. Images from the editor are ordered inputs and the CLI interprets requested dimensions as a framing instruction.
+
+Image mode checks the TCP peer for discovery, prompt submission and cancellation. Connect directly to ComfyUI. If you run a reverse proxy on the same host, block external image requests there or authenticate them before forwarding them to ComfyUI. The server recognizes its own connections by their socket addresses and rejects requests carrying common forwarding headers for image operations. Set `AVS_ENABLE_CODEX_IMAGE=0` to turn off image mode for every client.
 
 In Composa, configure the server in **AI Settings → Connections**, open **CLI → ComfyUI server** for the image connection and choose the language model reported by the server. In **AI Settings → Operations**, select **Codex image generation · CLI on ComfyUI server** for a generative operation. The prompt enhancer retains its own connection and model settings.
 
