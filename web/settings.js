@@ -41,7 +41,7 @@ export function settingsPanel(settings, request, onSave, anchor) {
     const capabilityNote = document.createElement('small'); capabilityNote.className = 'avs-capability-note';
     fields.reasoning.parentElement.append(capabilityNote);
     let models = [];
-    const connectionKey = () => JSON.stringify([fields.adapter.value, fields.base_url.value.trim(), fields.api_mode.value]);
+    const connectionKey = () => JSON.stringify([fields.adapter.value, fields.base_url.value.trim(), fields.api_mode.value, fields.output_mode.value]);
     function refreshEfforts() {
         const previous = fields.reasoning.value || 'auto';
         const model = models.find(m => m.id === fields.model.value);
@@ -89,13 +89,15 @@ export function settingsPanel(settings, request, onSave, anchor) {
     };
     const connectionChanged = () => { status.textContent=''; refresh(); loadCatalog(catalogs.get(connectionKey())); };
     fields.adapter.onchange=connectionChanged; fields.base_url.oninput=connectionChanged; fields.api_mode.onchange=connectionChanged;
+    fields.output_mode.onchange=connectionChanged;
     fields.image_mode.onchange=refresh;refresh();loadCatalog(catalogs.get(connectionKey()));
     const values = () => Object.fromEntries(Object.entries(fields).map(([k, el]) => [k, el.type === 'number' ? Number(el.value) : el.value]));
     const test = document.createElement('button'); test.type = 'button'; test.textContent = 'Test connection';
     test.onclick = async () => {
         const key = connectionKey(); test.disabled = true; status.textContent = 'Loading models…';
         try {
-            const result = await request('/test', values());
+            const imageMode = fields.adapter.value === 'codex' && fields.output_mode.value === 'text_and_image';
+            const result = imageMode ? await request('/image-cli') : await request('/test', values());
             catalogs.set(key, result);
             if (dialog.isConnected && key === connectionKey()) { status.textContent = result.message; loadCatalog(result); }
         } catch(e) { if (key === connectionKey()) status.textContent = e.message; }

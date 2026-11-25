@@ -40,6 +40,19 @@ def test_cancellation_is_scoped_and_image_generation_requires_opt_in(monkeypatch
     assert not cancelled(str(uuid4()))
 
 
+def test_desktop_opt_in_uses_server_data_and_respects_explicit_environment(monkeypatch, tmp_path):
+    marker = tmp_path / "enable-codex-image"
+    marker.touch()
+    monkeypatch.delenv("AVS_ENABLE_CODEX_IMAGE", raising=False)
+    require_enabled()
+    monkeypatch.setenv("AVS_ENABLE_CODEX_IMAGE", "0")
+    with pytest.raises(ValueError, match="disabled"):
+        require_enabled()
+    marker.unlink()
+    monkeypatch.setenv("AVS_ENABLE_CODEX_IMAGE", "1")
+    require_enabled()
+
+
 def test_extracts_only_the_threads_generated_png_and_cleans_it_up(monkeypatch, tmp_path):
     monkeypatch.setenv("CODEX_HOME", str(tmp_path))
     thread = str(uuid4())

@@ -9,9 +9,10 @@ import time
 from uuid import UUID
 
 from .images import MAX_BYTES, decode, encode
+from .storage import root
 
 PROTOCOL = 1
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 SIZES = {(1024, 1024): "square (1:1)", (1536, 1024): "landscape (3:2)", (1024, 1536): "portrait (2:3)"}
 _cancelled = {}
 _lock = threading.Lock()
@@ -56,8 +57,13 @@ class ImageRequest:
 
 
 def require_enabled():
-    if os.environ.get("AVS_ENABLE_CODEX_IMAGE") != "1":
-        raise ValueError("Codex image generation is disabled on this server. Set AVS_ENABLE_CODEX_IMAGE=1 and restart ComfyUI.")
+    enabled = os.environ.get("AVS_ENABLE_CODEX_IMAGE")
+    if enabled is None:
+        if (root() / "enable-codex-image").is_file():
+            return
+    elif enabled == "1":
+        return
+    raise ValueError("Codex image generation is disabled on this server. Set AVS_ENABLE_CODEX_IMAGE=1 or create enable-codex-image in the AVS server data directory.")
 
 
 def cancel(identifier):
