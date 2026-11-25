@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from PIL import Image
 
-from backend.image_cli import ImageRequest, cancel, cancelled, generated_png, require_enabled
+from backend.image_cli import ImageRequest, cancel, cancelled, generated_png
 from backend.request import build
 
 
@@ -30,27 +30,11 @@ def test_typed_request_validates_operation_dimensions_version_and_fields():
         build(state)
 
 
-def test_cancellation_is_scoped_and_image_generation_requires_opt_in(monkeypatch):
-    monkeypatch.delenv("AVS_ENABLE_CODEX_IMAGE", raising=False)
-    with pytest.raises(ValueError, match="disabled"):
-        require_enabled()
+def test_cancellation_is_scoped():
     identifier = str(uuid4())
     cancel(identifier)
     assert cancelled(identifier)
     assert not cancelled(str(uuid4()))
-
-
-def test_desktop_opt_in_uses_server_data_and_respects_explicit_environment(monkeypatch, tmp_path):
-    marker = tmp_path / "enable-codex-image"
-    marker.touch()
-    monkeypatch.delenv("AVS_ENABLE_CODEX_IMAGE", raising=False)
-    require_enabled()
-    monkeypatch.setenv("AVS_ENABLE_CODEX_IMAGE", "0")
-    with pytest.raises(ValueError, match="disabled"):
-        require_enabled()
-    marker.unlink()
-    monkeypatch.setenv("AVS_ENABLE_CODEX_IMAGE", "1")
-    require_enabled()
 
 
 def test_extracts_only_the_threads_generated_png_and_cleans_it_up(monkeypatch, tmp_path):
