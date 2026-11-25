@@ -5,10 +5,11 @@ from dataclasses import dataclass
 from urllib.parse import urlparse
 
 from .images import collect
+from .image_cli import ImageRequest
 
 DEFAULTS = dict(adapter="openai", model="", base_url="", api_mode="chat", reasoning="auto",
                 merge_mode="append", image_mode="original", max_mp=1.0, timeout=120,
-                max_images=32, max_output_tokens=2048)
+                max_images=32, max_output_tokens=2048, output_mode="text")
 
 
 def parse_state(raw):
@@ -24,6 +25,10 @@ def settings_for(state):
     settings = {**DEFAULTS, **{k: v for k, v in state.get("settings", {}).items() if k in DEFAULTS}}
     if settings["adapter"] not in {"openai", "compatible", "codex", "claude", "kimi"}:
         raise ValueError("Unsupported adapter")
+    if settings["output_mode"] not in ("text", "text_and_image"):
+        raise ValueError("Unknown output mode")
+    if settings["output_mode"] == "text_and_image" and settings["adapter"] != "codex":
+        raise ValueError("Text and image output requires Codex CLI")
     if not isinstance(settings["model"], str) or not settings["model"].strip():
         raise ValueError("Open Settings and enter a model ID")
     efforts = {"auto", "thinking", "no_thinking"} if settings["adapter"] == "kimi" else {"auto", "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
@@ -70,20 +75,27 @@ class PromptRequest:
     system: str
     images: list
     settings: dict
+    image: ImageRequest | None = None
 
     def fingerprint(self):
         semantic = {"version": 1, "user": self.user, "system": self.system,
-                    "settings": self.settings,
+                    "settings": {key: value for key, value in self.settings.items() if key != "output_mode"},
                     "images": [{"label": i.label, "sha256": i.digest} for i in self.images]}
         return hashlib.sha256(json.dumps(semantic, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
 
 
 def build(state, external="", **inputs):
     settings = settings_for(state)
+    raw_image = state.get("image_request")
+    image = ImageRequest.parse(raw_image) if settings["output_mode"] == "text_and_image" else None
+    if raw_image is not None and image is None:
+        raise ValueError("Image request requires text and image output")
     images = collect(state, inputs, settings)
+    if image and image.operation == "edit" and not images:
+        raise ValueError("Image editing requires a source image")
     internal = render_prompt(state, images)
     mode = settings["merge_mode"]
     user = external if mode == "replace" and external else "\n\n".join(p for p in ([external, internal] if mode == "prepend" else [internal, external]) if p)
     if not user.strip():
         raise ValueError("Your Prompt or external text is required")
-    return PromptRequest(user, str(state.get("system_prompt", "")), images, settings)
+    return PromptRequest(user, str(state.get("system_prompt", "")), images, settings, image)
