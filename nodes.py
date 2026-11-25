@@ -1,14 +1,17 @@
 import asyncio
+import io
+import time
 from .backend.request import parse_state, build
 from .backend.cache import execute
 from .backend.adapters import generate
 from .backend.storage import asset_path
+from .backend.image_cli import cancelled
 
 
 class AVSPromptHelper:
     CATEGORY = "AVS/Prompt"
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("prompt",)
+    RETURN_TYPES = ("STRING", "IMAGE")
+    RETURN_NAMES = ("prompt", "image")
     FUNCTION = "run"
 
     @classmethod
@@ -31,10 +34,17 @@ class AVSPromptHelper:
     async def run(self, state, external_text="", unique_id=None, **images):
         parsed = parse_state(state)
         request = await asyncio.to_thread(build, parsed, external_text, **images)
-        task = asyncio.create_task(execute(request, str(parsed.get("regeneration", "")), generate))
+        if request.image and request.image.id and cancelled(request.image.id):
+            raise ValueError("AVS image request cancelled")
+        started = time.monotonic()
+        # The persistent text cache never stores image bytes.
+        task = asyncio.create_task(generate(request) if request.image else
+                                   execute(request, str(parsed.get("regeneration", "")), generate))
         try:
             while not task.done():
                 await asyncio.wait({task}, timeout=0.25)
+                if request.image and request.image.id and cancelled(request.image.id):
+                    raise ValueError("AVS image request cancelled")
                 try:
                     from comfy.model_management import throw_exception_if_processing_interrupted
                 except ImportError:
@@ -49,5 +59,13 @@ class AVSPromptHelper:
             except BaseException:
                 pass
             raise
-        status = {key: value for key, value in result.items() if key != "text"}
-        return {"ui": {"avs_status": [status]}, "result": (result["text"],)}
+        image = None
+        if request.image:
+            import numpy as np
+            import torch
+            from PIL import Image
+            with Image.open(io.BytesIO(result["image"])) as rendered:
+                image = torch.from_numpy(np.asarray(rendered.convert("RGB"), dtype=np.float32) / 255.0).unsqueeze(0)
+            result["duration"] = round(time.monotonic() - started, 2)
+        status = {key: value for key, value in result.items() if key not in {"text", "image"}}
+        return {"ui": {"avs_status": [status]}, "result": (result["text"], image)}

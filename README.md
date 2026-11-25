@@ -1,6 +1,6 @@
 # AVS Prompt Helper
 
-A ComfyUI custom node that turns instructions and optional images into one `STRING` prompt using external models. Designed for the classic Nodes 1.0 canvas, using ComfyUI's `addDOMWidget` lifecycle. It loads no inference model into VRAM.
+A ComfyUI custom node that turns instructions and optional images into a `STRING` prompt using external models. Codex CLI can also produce a ComfyUI `IMAGE` for downstream nodes. Designed for the classic Nodes 1.0 canvas, using ComfyUI's `addDOMWidget` lifecycle.
 
 <p>
   <a href="docs/images/prompt-node.png"><img src="docs/images/prompt-node.png" width="56%" alt="AVS Prompt Helper with the Flux 2 Klein 4B EDIT preset and two image references"></a>
@@ -8,6 +8,8 @@ A ComfyUI custom node that turns instructions and optional images into one `STRI
 </p>
 
 ## Install
+
+For Codex CLI image output, install [AVS Prompt Helper v0.4.0](https://github.com/alvasafin-art/ComfyUI-AVS-Prompt-Helper/releases/tag/v0.4.0) or a later release.
 
 Copy this repository to `ComfyUI/custom_nodes/ComfyUI-AVS-Prompt-Helper` (the folder name is flexible). Install requirements with **ComfyUI's Python**, then restart ComfyUI and refresh the browser:
 
@@ -34,6 +36,17 @@ $env:AVS_CODEX_EXECUTABLE = 'C:\path with spaces\codex.exe'
 ```
 
 Keys and executable paths are server-local; they are never written to workflows/presets or returned by connection tests. API keys must not be placed in a base URL. Discovery does not prove that a subsequent inference or image request will succeed.
+
+### Codex CLI image output
+
+1. On the ComfyUI computer, install a Codex CLI that lists `image_generation` in `codex features list` and run `codex login` as the account that starts ComfyUI. Use the same `CODEX_HOME` for sign-in and for ComfyUI when you override it.
+2. Set `AVS_ENABLE_CODEX_IMAGE=1` in the ComfyUI launcher environment and restart the server. For PowerShell, set `$env:AVS_ENABLE_CODEX_IMAGE = '1'` before launching. Give only trusted users and clients access to this ComfyUI instance because image requests use the server's Codex account.
+3. In AVS Prompt Helper settings, choose **Codex CLI**, test the connection and select a server language model. Under **Generation → Output**, choose **Text and image**. The language model calls Codex's built-in image tool. Codex chooses the backing image model.
+4. Enter a prompt such as “A cobalt-blue ceramic cup on a pale gray background” and connect the second output, **image**, to **Preview Image**. You can also connect **prompt**, the first output, to any STRING consumer. Queue the graph to get a square image and a brief text response.
+
+Saved workflows without an output setting default to **Text only** and keep their first output at index 0. In text mode, leave the image port unconnected. Image output is a single RGB tensor shaped `[1,H,W,3]`. Images from the editor are ordered inputs and the CLI interprets requested dimensions as a framing instruction.
+
+In Composa, configure the server in **AI Settings → Connections**, open **CLI → ComfyUI server** for the image connection and choose the language model reported by the server. In **AI Settings → Operations**, select **Codex image generation · CLI on ComfyUI server** for a generative operation. The prompt enhancer retains its own connection and model settings.
 
 ### Model and reasoning discovery
 
@@ -88,6 +101,8 @@ Regenerate creates a unique serialized request token and queues the graph. Its d
 
 No automatic retries for timeouts, rate limits or 5xx: the provider might already have accepted a billable request. Correct the issue and queue again explicitly. ComfyUI interruption is polled while waiting; the HTTP task or CLI process is cancelled. An external provider may still finish/bill work already received. Failed, cancelled, incomplete and empty responses are not cached. No costs/token values are invented; unavailable usage is N/A.
 
+Image mode uses ComfyUI's execution cache. It bypasses the node's persistent text cache. Composa uses a new request ID for each generation. Its cancellation request stops that CLI job without interrupting other workflows on the server.
+
 ## Storage and routes
 
 Default: `ComfyUI/user/avs_prompt_helper`; override with `AVS_PROMPT_HELPER_DATA`. Subdirectories: `presets`, `uploads`, `cache`. Presets are isolated using ComfyUI's validated user identity. Cache and unguessable 256-bit upload handles are shared across this installation so workflow duplication/sharing works. Handles act as bearer capabilities: anyone possessing a workflow handle and server access can fetch that attachment. Protect remotely exposed ComfyUI with its authentication/reverse proxy. ComfyUI user IDs alone are not strong authentication.
@@ -101,10 +116,16 @@ Routes use ComfyUI session infrastructure and reject mismatched Origin headers:
 | POST `/avs-prompt/upload` | Multipart `image`, decoded/validated and stored under random ID |
 | GET `/avs-prompt/assets/{id}` | Attachment preview; no user-supplied filesystem paths |
 | POST `/avs-prompt/test` | Non-generating discovery; message, models with IDs/names/efforts, source for CLI |
+| GET `/avs-prompt/image-cli` | Non-generating discovery for the server's Codex image tool, node protocol and language models |
+| POST `/avs-prompt/image-cli/cancel/{id}` | Cancel the image request with the matching UUID |
+
+Desktop clients queue the usual ComfyUI graph using `AVSPromptHelper` and an IMAGE consumer wired to output index 1. The node's JSON state uses `settings.adapter: "codex"`, `settings.output_mode: "text_and_image"` and `image_request: {"version":1,"operation":"generate","width":1536,"height":1024,"request_id":"<UUID>"}`. Supported operations are `generate` and `edit`. Edits require a source IMAGE on the first connected image socket. Supported framing sizes are 1024×1024, 1536×1024 and 1024×1536. Credentials and executable configuration are read on the server.
 
 Uploads are retained so older workflows keep working. Delete unused uploads manually only after checking saved workflows. Malformed cache/preset JSON falls back safely; the next successful write replaces it. The disk cache contains generated text, so treat the data directory as private.
 
 ## Development and verification
+
+For pytest, use a checkout directory that is a valid Python package name, such as `avs_prompt_helper`.
 
 ```powershell
 python -m venv .venv

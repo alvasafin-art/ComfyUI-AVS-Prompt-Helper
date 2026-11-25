@@ -97,3 +97,24 @@ def register(server):
                               for m in data.get("data", []) if isinstance(m.get("id"), str)]
                     return web.json_response({"message": "Connected. Model list loaded; this API does not report reasoning capabilities.", "models": models})
         return await guarded(request, action)
+
+    @routes.get("/avs-prompt/image-cli")
+    async def image_cli(request):
+        from .image_cli import discover
+
+        async def action():
+            try:
+                return web.json_response(await asyncio.to_thread(discover))
+            except (OSError, asyncio.TimeoutError):
+                raise ValueError("Unable to run Codex CLI discovery on the ComfyUI server") from None
+        return await guarded(request, action)
+
+    @routes.post("/avs-prompt/image-cli/cancel/{identifier}")
+    async def cancel_image_cli(request):
+        from .image_cli import cancel, require_enabled
+
+        async def action():
+            require_enabled()
+            cancel(request.match_info["identifier"])
+            return web.Response(status=204)
+        return await guarded(request, action)

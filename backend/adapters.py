@@ -100,8 +100,21 @@ def cli_capabilities():
 
 
 async def cli_generate(request):
-    exe = await asyncio.to_thread(cli_capabilities)
     s = request.settings
+    image = request.image
+    if image:
+        from .image_cli import discover, generated_png, cancelled
+        catalog = await asyncio.to_thread(discover)
+        model = next((entry for entry in catalog["models"] if entry["id"] == s["model"]), None)
+        if not model:
+            raise ValueError("The selected language model is unavailable in the server's Codex catalogue")
+        if s["reasoning"] != "auto" and s["reasoning"] not in model["reasoning"]:
+            raise ValueError("The selected reasoning effort is unavailable for this server model")
+        if image.id and cancelled(image.id):
+            raise asyncio.CancelledError()
+        exe = cli_executable()
+    else:
+        exe = await asyncio.to_thread(cli_capabilities)
     with tempfile.TemporaryDirectory(prefix="avs-prompt-") as directory:
         out = Path(directory) / "answer.txt"
         args = [exe, "exec", "--ignore-user-config", "--ignore-rules", "--ephemeral", "--sandbox", "read-only",
@@ -109,31 +122,46 @@ async def cli_generate(request):
                 "--output-last-message", str(out), "-c", 'approval_policy="never"',
                 "-c", "features.shell_tool=false", "-c", "features.unified_exec=false",
                 "-c", 'web_search="disabled"']
+        args += ["--enable" if image else "--disable", "image_generation"]
         if s["reasoning"] != "auto":
             args += ["-c", "model_reasoning_effort=" + json.dumps(s["reasoning"])]
-        for index, image in enumerate(request.images):
+        for index, attachment in enumerate(request.images):
             path = Path(directory) / f"image_{index+1}.png"
-            path.write_bytes(image.data)
+            path.write_bytes(attachment.data)
             args += ["--image", str(path)]
         args += ["-"]
-        prompt = "Return only the final requested text. Do not use tools or inspect files.\n\nSYSTEM INSTRUCTIONS:\n" + request.system
+        prompt = (image.instruction() if image else "Return only the final requested text. Do not use tools or inspect files.")
+        prompt += "\n\nSYSTEM INSTRUCTIONS:\n" + request.system
         prompt += "\n\nUSER INSTRUCTIONS:\n" + request.user
         if request.images:
             prompt += "\n\nAttached images in order: " + ", ".join("@" + i.label for i in request.images)
         # Popen in a worker supports Windows ComfyUI selector event loops too.
-        process = await asyncio.to_thread(subprocess.Popen, args, cwd=directory, stdin=subprocess.PIPE,
-                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+        start = asyncio.create_task(asyncio.to_thread(subprocess.Popen, args, cwd=directory, stdin=subprocess.PIPE,
+                                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False))
+        try:
+            process = await asyncio.shield(start)
+        except asyncio.CancelledError:
+            process = await start
+            process.kill()
+            await asyncio.to_thread(process.communicate)
+            raise
         communication = asyncio.create_task(asyncio.to_thread(process.communicate, prompt.encode()))
         try:
             stdout, stderr = await asyncio.wait_for(asyncio.shield(communication), s["timeout"])
         except (asyncio.CancelledError, asyncio.TimeoutError):
             process.kill()
-            await communication
+            stdout, _ = await communication
+            if image:
+                generated_png(stdout, required=False)
             raise
         if process.returncode:
+            if image:
+                generated_png(stdout, required=False)
+                raise ValueError("Codex image generation failed. Check the model, server-side sign-in and account access.")
             from .codex_catalog import failure_detail
             detail = failure_detail(stdout, stderr, (request.user, request.system))
             raise ValueError(f"Codex failed (exit {process.returncode}): {detail}")
+        png = generated_png(stdout) if image else None
         text = out.read_text(encoding="utf-8").strip() if out.exists() else ""
         if not text:
             raise ValueError("Codex returned no final text")
@@ -145,7 +173,10 @@ async def cli_generate(request):
                     counts = usage(event)
             except ValueError:
                 pass
-        return {"text": text, "usage": counts, "provider": "codex", "model": s["model"]}
+        result = {"text": text, "usage": counts, "provider": "codex", "model": s["model"]}
+        if png is not None:
+            result["image"] = png
+        return result
 
 
 async def generate(request):

@@ -1,4 +1,4 @@
-export const defaults = { adapter: 'openai', model: '', base_url: '', api_mode: 'chat', reasoning: 'auto', merge_mode: 'append', image_mode: 'original', max_mp: 1, timeout: 120, max_images: 32, max_output_tokens: 2048 };
+export const defaults = { adapter: 'openai', model: '', base_url: '', api_mode: 'chat', reasoning: 'auto', merge_mode: 'append', image_mode: 'original', max_mp: 1, timeout: 120, max_images: 32, max_output_tokens: 2048, output_mode: 'text' };
 
 import { showNodeDialog } from './dialog.js';
 const catalogs = new Map();
@@ -28,7 +28,8 @@ export function settingsPanel(settings, request, onSave, anchor) {
         ['api_mode','Compatible API mode', [['chat','Chat Completions'],['responses','Responses'],['auto','Auto: Responses → Chat on 404/405']]]
     ]);
     group('Model', [['model','Model ID'], ['reasoning','Reasoning effort', ['auto',...manualEfforts(settings.adapter || defaults.adapter)].map(x => [x, effortNames[x] || x])]]);
-    group('Generation', [['merge_mode','External text', [['append','Append'],['replace','Replace internal'],['prepend','Prepend']]], ['max_output_tokens','Maximum output tokens',null,'number']]);
+    group('Generation', [['output_mode','Output', [['text','Text only'],['text_and_image','Text and image']]],
+        ['merge_mode','External text', [['append','Append'],['replace','Replace internal'],['prepend','Prepend']]], ['max_output_tokens','Maximum output tokens',null,'number']]);
     group('Images', [['image_mode','Image size mode',[['original','Original resolution'],['max_mp','Maximum megapixels (MP)']]], ['max_mp','Maximum megapixels',null,'number'], ['max_images','Provider image limit (set from provider documentation)',null,'number']]);
     group('Advanced', [['timeout','Request timeout (seconds)',null,'number']]);
     fields.model.placeholder='e.g. gpt-6-luna';
@@ -79,6 +80,9 @@ export function settingsPanel(settings, request, onSave, anchor) {
     fields.model.oninput = refreshEfforts;
     const refresh = () => {
         const compatible=fields.adapter.value==='compatible';
+        const codex=fields.adapter.value==='codex';
+        if (!codex) fields.output_mode.value='text';
+        fields.output_mode.parentElement.hidden=!codex;
         fields.base_url.parentElement.hidden=!compatible;fields.api_mode.parentElement.hidden=!compatible;
         fields.max_mp.parentElement.hidden=fields.image_mode.value!=='max_mp';
         fields.max_output_tokens.parentElement.hidden=['codex','claude','kimi'].includes(fields.adapter.value);
