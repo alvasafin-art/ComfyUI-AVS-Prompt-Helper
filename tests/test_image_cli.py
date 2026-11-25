@@ -1,12 +1,17 @@
 import io
 import json
 from uuid import uuid4
+from types import SimpleNamespace
 
 import pytest
+from aiohttp import web
+from aiohttp.test_utils import TestClient, TestServer
 from PIL import Image
 
+from backend import image_cli
 from backend.image_cli import ImageRequest, cancel, cancelled, generated_png
 from backend.request import build
+from backend.routes import register
 
 
 def test_old_state_keeps_text_mode_and_image_request_requires_codex():
@@ -35,6 +40,28 @@ def test_cancellation_is_scoped():
     cancel(identifier)
     assert cancelled(identifier)
     assert not cancelled(str(uuid4()))
+
+
+@pytest.mark.asyncio
+async def test_image_routes_use_the_existing_comfy_connection(monkeypatch):
+    monkeypatch.setattr(image_cli, "discover", lambda: {"models": [{"id": "fixture"}]})
+    routes = web.RouteTableDef()
+    register(SimpleNamespace(routes=routes, user_manager=SimpleNamespace(get_request_user_id=lambda _: "fixture")))
+    app = web.Application()
+    app.add_routes(routes)
+    client = TestClient(TestServer(app))
+    async with client:
+        # A proxy header does not impose a separate image-only address policy.
+        headers = {"Forwarded": "for=192.0.2.10"}
+        async with client.get("/avs-prompt/image-cli", headers=headers) as response:
+            assert response.status == 200
+            assert await response.json() == {"models": [{"id": "fixture"}]}
+        identifier = str(uuid4())
+        async with client.post(f"/avs-prompt/image-cli/cancel/{identifier}", headers=headers) as response:
+            assert response.status == 204
+        assert cancelled(identifier)
+        async with client.get("/avs-prompt/image-cli", headers={"Origin": "https://other.example"}) as response:
+            assert response.status == 403
 
 
 def test_extracts_only_the_threads_generated_png_and_cleans_it_up(monkeypatch, tmp_path):

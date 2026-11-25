@@ -11,7 +11,7 @@ from uuid import UUID
 from .images import MAX_BYTES, decode, encode
 
 PROTOCOL = 1
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 SIZES = {(1024, 1024): "square (1:1)", (1536, 1024): "landscape (3:2)", (1024, 1536): "portrait (2:3)"}
 _cancelled = {}
 _lock = threading.Lock()

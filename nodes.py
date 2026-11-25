@@ -6,7 +6,6 @@ from .backend.cache import execute
 from .backend.adapters import generate
 from .backend.storage import asset_path
 from .backend.image_cli import cancelled
-from .backend.image_access import require_authorized
 
 
 class AVSPromptHelper:
@@ -20,7 +19,7 @@ class AVSPromptHelper:
         return {"required": {"state": ("STRING", {"default": '{"version":1}', "multiline": True})},
                 "optional": {"external_text": ("STRING", {"forceInput": True}),
                              **{f"image_{i}": ("IMAGE",) for i in range(1, 21)}},
-                "hidden": {"unique_id": "UNIQUE_ID", "prompt": "PROMPT"}}
+                "hidden": {"unique_id": "UNIQUE_ID"}}
 
     @classmethod
     def IS_CHANGED(cls, state, **kwargs):
@@ -32,13 +31,11 @@ class AVSPromptHelper:
             digest.update(path.read_bytes() if path.exists() else b"missing")
         return digest.hexdigest()
 
-    async def run(self, state, external_text="", unique_id=None, prompt=None, **images):
+    async def run(self, state, external_text="", unique_id=None, **images):
         parsed = parse_state(state)
         request = await asyncio.to_thread(build, parsed, external_text, **images)
-        if request.image:
-            require_authorized(prompt)
-            if request.image.id and cancelled(request.image.id):
-                raise ValueError("AVS image request cancelled")
+        if request.image and request.image.id and cancelled(request.image.id):
+            raise ValueError("AVS image request cancelled")
         started = time.monotonic()
         # The persistent text cache never stores image bytes.
         task = asyncio.create_task(generate(request) if request.image else
